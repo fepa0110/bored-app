@@ -1,84 +1,141 @@
-import { StatusBar } from "expo-status-bar";
 import { useState, useEffect } from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  FlatList,
+  Image,
+} from "react-native";
+
+
 import { FontAwesome5 } from "@expo/vector-icons";
-
-const primaryColor = "blue";
-const secondaryColor = "";
-const primaryBackgroundColor = "white";
-const secondBackgroundaryColor = "";
-const primaryTextColor = "white";
-const primaryIconColor = "blue";
-
-const translateApi = "https://api.mymemory.translated.net/get?q=";
-//example translate api 
-//"https://api.mymemory.translated.net/get?q={text}!&langpair={fromLanguaje}|{toLanguaje}"
-const boredApi = "https://www.boredapi.com/api/activity/";
+// const urlServer = "http://localhost:28002/traxpet-server/rest";
 export default function App() {
-  const [activity, setActivity] = useState({});
+  const url =
+    "http://192.168.100.51:28002/traxpet-server/rest/imagenesMascota/mascotasActivas";
+  const mascotasSimilares = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 26, 27, 28, 29, 30,
+  ];
+  const numberOfItemsPerPageList = [5, 20, 50];
+  const [page, setPage] = useState(0);
+  const [numberOfItemsPerPage, onItemsPerPageChange] = useState(
+    numberOfItemsPerPageList[0]
+  );
 
-  const fetchActivity = async () => {
-    const response = await fetch(boredApi);
-    const activity = await response.json();
-    const translatedActivity = await traslateActivity(activity.activity);
-    activity.activity = translatedActivity;
-    setActivity(activity);
+  const [isLoading, setIsLoading] = useState(true);
+  const [imagenesMascotas, setImagenesMascotas] = useState([]);
+
+  const fetchImages = async () => {
+    console.log("Se actualizan imagenes");
+    setIsLoading(true);
+    const mascotasParaBuscar = mascotasSimilares.slice(
+      page * numberOfItemsPerPage,
+      page * numberOfItemsPerPage + numberOfItemsPerPage
+    );
+    if (mascotasParaBuscar.length !== 0) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify(mascotasParaBuscar),
+      });
+      const imagenes = await response.json();
+
+      const mascotitas = imagenesMascotas.concat(imagenes.data);
+      setImagenesMascotas(mascotitas);
+      setPage(page + 1);
+    }
+    setIsLoading(false);
   };
-
-  const traslateActivity = async (text) => {
-    const response = await fetch(translateApi + text + "&langpair=en|es");
-    const tranlator = await response.json();
-    return tranlator.responseData.translatedText;
-  };
-
   useEffect(() => {
-    fetchActivity();
+    fetchImages();
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.activityTitle}>{activity.activity}</Text>
+  const listEmpty = () => {
+    return (
+      <View style={styles.messageContainer}>
+        <Text style={styles.message}>
+          No hay publicaciones que coincidan con la especie de tu mascota :c
+        </Text>
+        <FontAwesome5 name="paw" size={32} color={"orange"} />
       </View>
+    );
+  };
 
-      <TouchableOpacity style={styles.btn} onPress={fetchActivity}>
-        <FontAwesome5 name="redo" size={30} color={primaryIconColor} />
+  const renderItem = ({ item }) => {
+    return (
+      <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: `data:image/jpg;base64,${item.ImagenData}` }}
+            style={styles.image}
+          />
+        <TouchableOpacity style={styles.botonVerMas} onPress={fetchImages}>
+          <Text>Seleccionar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const botonVerMas = () => {
+    return (
+      <TouchableOpacity style={styles.botonVerMas} onPress={fetchImages}>
+        <Text>Ver mas mascotas</Text>
       </TouchableOpacity>
+    );
+  };
+  return (
+    <View>
+      <FlatList
+        data={imagenesMascotas}
+        keyExtractor={(item, index) => index.toString()}
+        ListHeaderComponent={botonVerMas}
+        ListHeaderComponentStyle={{
+          alignItems: "center",
+          justifyContent: "center",
+          alignContent: "center",
+        }}
+        renderItem={renderItem}
+        ListFooterComponent={botonVerMas}
+        ListFooterComponentStyle={{
+          alignItems: "center",
+          justifyContent: "center",
+          alignContent: "center",
+        }}
+        numColumns={2}
+        ListEmptyComponent={listEmpty}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  imageContainer: {
     flex: 1,
-    backgroundColor: primaryBackgroundColor,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#fff",
+    padding: 10,
   },
-  card: {
-    borderRadius: 10,
-    backgroundColor: primaryColor,
+  image: {
+    height: 250,
+    resizeMode: "contain",
+    resizeMethod: "scale",
     width: "100%",
-    height: "75%",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 25,
   },
-  activityTitle: {
-    fontSize: 50,
+
+  message: {
     fontWeight: "bold",
-    color: primaryTextColor,
-    fontStyle: "italic",
-    marginVertical: 5,
+    fontSize: 16,
+    padding: 5,
+    color: "black",
   },
-  btn: {
-    margin: 10,
+  botonVerMas: {
+    width: 200,
     height: 60,
-    width: 60,
-    borderRadius: 50,
-    backgroundColor: primaryBackgroundColor,
-    alignItems: "center",
-    justifyContent: "center",
-    borderColor: primaryIconColor,
-    borderWidth: 1,
+    backgroundColor: "orange",
   },
+  messageContainer: { justifyContent: "center", alignItems: "center" },
 });
